@@ -1,0 +1,9 @@
+.bank-transfers-table th, td {
+    border: 1px solid rgba(224, 224, 224, 1);
+}
+
+.bank-transfers-table {
+    margin: auto;
+    min-width: 650px;
+    /*max-width: 1200px;*/
+}

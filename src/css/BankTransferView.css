@@ -1,0 +1,12 @@
+.grid-container {
+    max-width: 1200px;
+    margin: auto !important;
+}
+
+.first-grid-cell {
+    text-align: left;
+}
+
+.last-grid-cell {
+    text-align: right;
+}
