@@ -1,41 +1,51 @@
 import "../css/BankTransferView.css"
 import BankTransfersTable from "./BankTransfersTable";
-import OperatorSelector from "./OperatorSelector"
+import AutocompleteSelector from "./AutocompleteSelector"
 import {useEffect, useState} from "react";
 import {Button, Grid} from "@mui/material";
 import {DatePicker, LocalizationProvider} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import 'dayjs/locale/pt-br'
 
-const BASE_URL = "http://localhost:8080/transfers?"
-let DEFAULT_FILTERS = {startTime: null, endTime: null, operatorName: ''}
+const BASE_URL = "http://localhost:8080/transfers"
+let default_filters = {startTime: null, endTime: null, operatorName: ''}
 
 function formatData(data) {
     data.forEach((row) => {
         row.dataTransferencia = new Date(row.dataTransferencia).toLocaleDateString('pt-br');
+
         row.tipo = row.tipo.charAt(0) + row.tipo.slice(1).toLowerCase();
+        if (row.tipo === "Transferencia") {
+            row.tipo += (row.valor > 0) ? " Entrada" : " Entrada"
+        }
     })
 }
 
 function constructAPIQuery(filters) {
-    let query = BASE_URL;
+    let query = BASE_URL + "?";
+    if (filters.accountId) {
+        query += `&accountId=${filters.accountId}`
+    }
     if (filters.startTime instanceof Date) {
         query += `&startTime=${filters.startTime.toISOString()}`;
     }
     if (filters.endTime instanceof Date) {
         query += `&endTime=${filters.endTime.toISOString()}`;
     }
-    if (filters.operatorName) {
+    if (filters.operatorName !== "") {
         query += `&operatorName=${filters.operatorName}`;
     }
 
     return query;
 }
 
-function BankTransfersView() {
+function BankTransfersView({selectedUserId}) {
     const [transfersData, setTransfersData] = useState();
+    const [operators, setOperators] = useState();
 
-    const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    default_filters = {...default_filters, "accountId": selectedUserId}
+
+    const [filters, setFilters] = useState(default_filters);
     const [oldFilters, setOldFilters] = useState();
 
     function updateFilters(key, newValue) {
@@ -45,7 +55,6 @@ function BankTransfersView() {
 
     const fetchTableData = () => {
         if (filters !== oldFilters) {
-            console.log("fetching");
             fetch(constructAPIQuery(filters)).then(response => {
                 return response.json();
             }).then(data => {
@@ -56,7 +65,20 @@ function BankTransfersView() {
         }
     }
 
+    const fetchOperators = () => {
+        fetch(`${BASE_URL}/operators`).then(response => {
+            return response.json();
+        }).then(data => {
+            let dataObj = [];
+            data.forEach((row) => {
+                if (row !== null) dataObj.push({"label": row})
+            })
+            setOperators(dataObj);
+        });
+    }
+
     useEffect(() => {
+        fetchOperators();
         fetchTableData();
     }, [])
 
@@ -78,12 +100,19 @@ function BankTransfersView() {
                 </LocalizationProvider>
             </Grid>
             <Grid item xs={2} sm={4} md={4} className={"last-grid-cell"}>
-                <OperatorSelector updateFilters={updateFilters} textValue={filters.operatorName}/>
+                <AutocompleteSelector
+                    title="Nome do Operador Transacionado"
+                    updateValue={(newValue) => (updateFilters("operatorName", newValue.label))}
+                    textValue={filters.operatorName}
+                    autoCompleteData={operators}/>
             </Grid>
-            <Grid item xs={2} sm={4} md={4} className={"last-grid-cell"}>
-                <Button variant="outlined" onClick={() => fetchTableData()}>Pesquisar</Button>
-                <Button variant="outlined" onClick={() => (setFilters(DEFAULT_FILTERS))}>Limpar Filtros</Button>
+            <Grid item xs={1} sm={2} md={2} className={"last-grid-cell"}>
+                <Button className="buttons" variant="outlined" onClick={() => fetchTableData()}>Pesquisar</Button>
             </Grid>
+            <Grid item xs={1} sm={2} md={2} className={"last-grid-cell"}>
+                <Button className="buttons" variant="outlined" onClick={() => (setFilters(default_filters))}>Limpar Filtros</Button>
+            </Grid>
+
 
             <Grid item xs={12} sm={12} md={12}>
                 <BankTransfersTable tableData={transfersData}/>
